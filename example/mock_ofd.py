@@ -15,12 +15,13 @@
 #    See the License for the specific language governing permissions and
 #
 
+import argparse
 import asyncio
 import json
 import time
-import argparse
-from ofd.protocol import SessionHeader, FrameHeader, unpack_container_message, pack_json, DOCS_BY_NAME, DocCodes, \
-    String
+
+from ofd.protocol import (DOCS_BY_NAME, DocCodes, FrameHeader, SessionHeader,
+                          String, pack_json, unpack_container_message)
 
 
 async def unpack_incoming_message(rd):
@@ -43,7 +44,7 @@ def create_response(doc, in_session, in_header):
     :param doc: полученный документ
     :param in_header: заголовок контейнера входящего сообщения
     :param in_session: заголовок сессии входящего сообщения
-    :return: 
+    :return:
     """
     doc_body = doc[next(iter(doc))]  # получаем тело документа
     message = {
@@ -80,7 +81,7 @@ async def handle_connection(rd, wr):
     """
     Пример использования протокола для эмуляции работы ОФД. Сервер принимает входящее сообщение и распаковывает его,
     выводя значения в stdout. В ответ сервер формирует сообщение "подтверждение оператора" и передает его обратно кассе.
-    Эмулятор работает без использования шифровальный машины, поэтому считаем, что сообщение приходит в ОФД 
+    Эмулятор работает без использования шифровальный машины, поэтому считаем, что сообщение приходит в ОФД
     в незашифрованном виде.
     :param rd: readable stream.
     :param wr: writable stream.
@@ -93,7 +94,7 @@ async def handle_connection(rd, wr):
         wr.write(response)
     finally:
         wr.write_eof()
-        wr.drain()
+        await wr.drain()
 
 
 if __name__ == '__main__':
@@ -104,7 +105,7 @@ if __name__ == '__main__':
     host = None if argv.host in ['::', 'localhost'] else argv.host
 
     loop = asyncio.get_event_loop()
-    server = asyncio.start_server(handle_connection, host=host, port=argv.port, loop=loop)
+    server = asyncio.start_server(handle_connection, host=host, port=argv.port)
     loop.run_until_complete(server)
     print('mock ofd server has been started at port', argv.port)
 

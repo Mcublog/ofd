@@ -16,21 +16,22 @@
 
 
 import array
-import json
-import os
-import crcmod
-import crcmod.predefined
-import decimal
-import struct
-import jsonschema
 import base64
 import datetime
+import decimal
+import json
+import os
 import re
-from jsonschema import ValidationError, Draft4Validator
+import struct
+
+import crcmod
+import crcmod.predefined
+import jsonschema
+from jsonschema import Draft4Validator, ValidationError
 
 VERSION = (1, 1, 0, 'ATOL-3')
 
-SIGNATURE = array.array('B', [42, 8, 65, 10]).tostring()
+SIGNATURE = array.array('B', [42, 8, 65, 10]).tobytes().decode("utf-8")
 
 FLK_ERROR = 14  # Ошибка форматно-логического контроля при обработке документа
 

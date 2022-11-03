@@ -1,11 +1,20 @@
-import pytest
 import asyncio
-from pytest_asyncio.plugin import unused_tcp_port
+import contextlib
+import socket
+
+import pytest
+
 from example.mock_ofd import handle_connection, unpack_incoming_message
 
 
+def unused_tcp_port() -> int:
+    """Find an unused localhost port from 1024-65535 and return it."""
+    with contextlib.closing(socket.socket(type=socket.SOCK_STREAM)) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
 @pytest.mark.asyncio(True)
-async def test_ofd_emulation(event_loop):
+async def test_ofd_emulation():
     binary_dump = b'*\x08A\n\x81\xa2\x00\x019999078900005488\xb4\x01\x14\x00\x00\x00\xb4\x01%x\xa5\x0b\x01\x10\t\x99\x99' \
                b'\x07\x89\x00\x00T\x88\x00\x00\x01\x84\xecL\x14\xc2\x00\x00\x01\x00\x04\x01\x8a\x0b\x00\x86\x01\x11' \
                b'\x04\x10\x009999078900005488\r\x04\x14\x000000000005008570    \xfa\x03\x0c\x007702203276  \x10\x04' \
@@ -21,8 +30,9 @@ async def test_ofd_emulation(event_loop):
                b'\x04\x01\x00\x01\x81\x06\xa5Z\xe1\x0cMu\x00\x00'
 
     port = unused_tcp_port()
-    server = await asyncio.start_server(handle_connection, port=port, loop=event_loop)
-    rd, wr = await asyncio.open_connection(port=port, loop=event_loop)
+    print(port)
+    server = await asyncio.start_server(handle_connection, port=port)
+    rd, wr = await asyncio.open_connection(port=port)
 
     wr.write(binary_dump)
     await wr.drain()
