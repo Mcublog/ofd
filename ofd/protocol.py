@@ -14,7 +14,6 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 
-
 import array
 import base64
 import datetime
@@ -43,6 +42,7 @@ class ProtocolError(RuntimeError):
 
 
 class InvalidProtocolDocument(ProtocolError):
+
     def __init__(self):
         super(InvalidProtocolDocument, self).__init__('invalid document')
 
@@ -96,6 +96,7 @@ class Byte(object):
 
 
 class U32(object):
+
     def __init__(self, name, desc, cardinality=None, parents=None):
         self.name = name
         self.desc = desc
@@ -116,8 +117,37 @@ class U32(object):
         return struct.unpack('<I', data)[0]
 
 
+class U16(object):
+
+    def __init__(self, name, desc, cardinality=None, parents=None):
+        self.name = name
+        self.desc = desc
+        self.maxlen = 2,
+        self.cardinality = cardinality,
+        self.parents = parents
+        self.ty = None
+
+    @staticmethod
+    def pack(data):
+        return struct.pack('<H', data)
+
+    @staticmethod
+    def unpack(data):
+        # for zero-length tag value
+        if len(data) == 0:
+            return 0
+        return struct.unpack('<H', data)[0]
+
+
 class String(object):
-    def __init__(self, name, desc, maxlen, cardinality=None, parents=None, strip=False):
+
+    def __init__(self,
+                 name,
+                 desc,
+                 maxlen,
+                 cardinality=None,
+                 parents=None,
+                 strip=False):
         self.name = name
         self.desc = desc
         self.maxlen = maxlen
@@ -134,16 +164,22 @@ class String(object):
         if len(data) == 0:
             return ''
         if len(data) > self.maxlen:
-            raise ValueError('String tag {ty} actual size {actual} is greater than maximum {max}. Data: {data}'
-                             .format(ty=self.ty, actual=len(data), max=self.maxlen, data=data))
+            raise ValueError(
+                'String tag {ty} actual size {actual} is greater than maximum {max}. Data: {data}'
+                .format(ty=self.ty,
+                        actual=len(data),
+                        max=self.maxlen,
+                        data=data))
 
-        result = struct.unpack('{}s'.format(len(data)), data)[0].decode('cp866')
+        result = struct.unpack('{}s'.format(len(data)),
+                               data)[0].decode('cp866')
         if self.strip:
             result = result.strip()
         return result
 
 
 class ByteArray(object):
+
     def __init__(self, name, desc, maxlen, parents=None):
         self.name = name
         self.desc = desc
@@ -159,11 +195,14 @@ class ByteArray(object):
         if len(data) == 0:
             return ''
         if len(data) > self.maxlen:
-            raise ValueError('ByteArray actual size {} is greater than maximum {}'.format(len(data), self.maxlen))
+            raise ValueError(
+                'ByteArray actual size {} is greater than maximum {}'.format(
+                    len(data), self.maxlen))
         return str(struct.unpack('{}s'.format(len(data)), data)[0])
 
 
 class UnixTime(object):
+
     def __init__(self, name, desc, parents=None):
         self.name = name
         self.desc = desc
@@ -181,6 +220,7 @@ class UnixTime(object):
 
 
 class VLN(object):
+
     def __init__(self, name, desc, maxlen=8, parents=None):
         self.name = name
         self.desc = desc
@@ -193,23 +233,27 @@ class VLN(object):
         # Если длина полученного массива больше maxlen, то у массива будут обрезаны нули справа до maxlen,
         # т.к. они не влияют на итоговое значение числа
         if len(packed) > self.maxlen:
-            trim_part = packed[self.maxlen: len(packed)]
+            trim_part = packed[self.maxlen:len(packed)]
             # Если отбрасываемая часть содержит не только нули, значит переданное число больше чем maxlen и
             # оно не может быть корректно упаковано
             if trim_part != b'\x00' * len(trim_part):
-                raise ValueError('VLN cant pack {} because is greater than maximum {}'.format(data, self.maxlen))
+                raise ValueError(
+                    'VLN cant pack {} because is greater than maximum {}'.
+                    format(data, self.maxlen))
             return packed[:self.maxlen]
 
         return packed
 
     def unpack(self, data):
         if len(data) > self.maxlen:
-            raise ValueError('VLN for "{}" actual size {} is greater than maximum {}'
-                             .format(self.name, len(data), self.maxlen))
+            raise ValueError(
+                'VLN for "{}" actual size {} is greater than maximum {}'.
+                format(self.name, len(data), self.maxlen))
         return struct.unpack('<Q', data + b'\x00' * (8 - len(data)))[0]
 
 
 class FVLN(object):
+
     def __init__(self, name, desc, maxlen, parents=None):
         self.name = name
         self.desc = desc
@@ -229,11 +273,13 @@ class FVLN(object):
         # Если длина полученного массива больше maxlen, то у массива будут обрезаны нули справа до maxlen,
         # т.к. они не влияют на итоговое значение числа
         if len(packed) > self.maxlen:
-            trim_part = packed[self.maxlen: len(packed)]
+            trim_part = packed[self.maxlen:len(packed)]
             # Если отбрасываемая часть содержит не только нули, значит переданное число больше чем maxlen и
             # оно не может быть корректно упаковано
             if trim_part != b'\x00' * len(trim_part):
-                raise ValueError('FVLN cant pack {} because is greater than maximum {}'.format(data, self.maxlen))
+                raise ValueError(
+                    'FVLN cant pack {} because is greater than maximum {}'.
+                    format(data, self.maxlen))
             return packed[:self.maxlen]
 
         return packed
@@ -244,12 +290,13 @@ class FVLN(object):
 
         pad = b'\x00' * (9 - len(data))
         pos, num = struct.unpack('<bQ', data + pad)
-        d = decimal.Decimal(10) ** +pos
-        q = decimal.Decimal(10) ** -pos
+        d = decimal.Decimal(10)**+pos
+        q = decimal.Decimal(10)**-pos
         return float((decimal.Decimal(num) / d).quantize(q))
 
 
 class STLV(object):
+
     def __init__(self, name, desc, maxlen, cardinality='1', parents=None):
         self.name = name
         self.desc = desc
@@ -302,7 +349,9 @@ class STLV(object):
                 return d
 
         # если соответствие не найдено, то кидаем ошибку - это лучше, чем расшифровать в неправильный тег
-        raise ProtocolError('Cant select correct json for {} with parent {}'.format(ty, self.ty))
+        raise ProtocolError(
+            'Cant select correct json for {} with parent {}'.format(
+                ty, self.ty))
 
 
 class SessionHeader(object):
@@ -314,6 +363,7 @@ class SessionHeader(object):
         struct.unpack('<H', bytearray.fromhex('0002'))[0],
         struct.unpack('<H', bytearray.fromhex('0100'))[0],
         struct.unpack('<H', bytearray.fromhex('0105'))[0],
+        struct.unpack('<H', bytearray.fromhex('0110'))[0],
         struct.unpack('<H', bytearray.fromhex('0110'))[0]
     }
     STRUCT = struct.Struct('<IHH16sHHH')
@@ -339,15 +389,8 @@ class SessionHeader(object):
         self.crc = crc
 
     def pack(self):
-        return self.STRUCT.pack(
-            self.MAGIC,
-            self.PVERS,
-            self.pva,
-            self.fs_id,
-            self.length,
-            self.flags,
-            self.crc
-        )
+        return self.STRUCT.pack(self.MAGIC, self.PVERS, self.pva, self.fs_id,
+                                self.length, self.flags, self.crc)
 
     @property
     def pva_hex(self):
@@ -416,17 +459,9 @@ class FrameHeader(object):
         self.extra2 = extra2
 
     def pack(self):
-        return self.STRUCT.pack(
-            self.length,
-            self.crc,
-            self.MSGTYPE,
-            self.doctype,
-            self.version,
-            self.extra1,
-            self.devnum,
-            self._docnum,
-            self.extra2
-        )
+        return self.STRUCT.pack(self.length, self.crc, self.MSGTYPE,
+                                self.doctype, self.version, self.extra1,
+                                self.devnum, self._docnum, self.extra2)
 
     @classmethod
     def unpack_from(cls, data):
@@ -476,7 +511,7 @@ class FrameHeader(object):
         pack = cls.STRUCT_TINY.unpack(data)
 
         if pack[cls.MSGTYPE_ID - 2] != cls.MSGTYPE:
-             raise ValueError('invalid message type')
+            raise ValueError('invalid message type')
         if pack[cls.VERSION_ID - 2] != cls.VERSION:
             raise ValueError('invalid protocol version')
 
@@ -529,117 +564,118 @@ class DocCodes:
     OPERATOR_ACK = 7
 
 
+# yapf: disable
 # англоязычные name могут повторяться в тегах, русскоязычный description - уникальный для каждого тега
 DOCUMENTS = {
-    DocCodes.FISCAL_REPORT: STLV(u'fiscalReport', u'Отчёт о фискализации', maxlen=658),
-    DocCodes.FISCAL_REPORT_CORRECTION: STLV(u'fiscalReportCorrection', u'Отчёт об изменении параметров регистрации',
+    DocCodes.FISCAL_REPORT: STLV('fiscalReport', 'Отчёт о фискализации', maxlen=658),
+    DocCodes.FISCAL_REPORT_CORRECTION: STLV('fiscalReportCorrection', 'Отчёт об изменении параметров регистрации',
                                             maxlen=658),
-    DocCodes.OPEN_SHIFT: STLV(u'openShift', u'Отчёт об открытии смены', maxlen=440),
-    DocCodes.CURRENT_STATE_REPORT: STLV(u'currentStateReport', u'Отчёт о текущем состоянии расчетов', maxlen=32768),
-    DocCodes.RECEIPT: STLV(u'receipt', u'Кассовый чек', maxlen=32768),
-    DocCodes.RECEIPT_CORRECTION: STLV(u'receiptCorrection', u'Кассовый чек коррекции', maxlen=32768),
-    DocCodes.BSO: STLV(u'bso', u'Бланк строгой отчетности', maxlen=32768),
-    DocCodes.BSO_CORRECTION: STLV(u'bsoCorrection', u'Бланк строгой отчетности коррекции', maxlen=32768),
-    DocCodes.CLOSE_SHIFT: STLV(u'closeShift', u'Отчёт о закрытии смены', maxlen=441),
-    DocCodes.CLOSE_ARCHIVE: STLV(u'closeArchive', u'Отчёт о закрытии фискального накопителя', maxlen=432),
-    DocCodes.OPERATOR_ACK: STLV(u'operatorAck', u'подтверждение оператора', maxlen=512),
+    DocCodes.OPEN_SHIFT: STLV('openShift', 'Отчёт об открытии смены', maxlen=440),
+    DocCodes.CURRENT_STATE_REPORT: STLV('currentStateReport', 'Отчёт о текущем состоянии расчетов', maxlen=32768),
+    DocCodes.RECEIPT: STLV('receipt', 'Кассовый чек', maxlen=32768),
+    DocCodes.RECEIPT_CORRECTION: STLV('receiptCorrection', 'Кассовый чек коррекции', maxlen=32768),
+    DocCodes.BSO: STLV('bso', 'Бланк строгой отчетности', maxlen=32768),
+    DocCodes.BSO_CORRECTION: STLV('bsoCorrection', 'Бланк строгой отчетности коррекции', maxlen=32768),
+    DocCodes.CLOSE_SHIFT: STLV('closeShift', 'Отчёт о закрытии смены', maxlen=441),
+    DocCodes.CLOSE_ARCHIVE: STLV('closeArchive', 'Отчёт о закрытии фискального накопителя', maxlen=432),
+    DocCodes.OPERATOR_ACK: STLV('operatorAck', 'подтверждение оператора', maxlen=512),
 
-    1000: String(u'docName', u'наименование документа', maxlen=256),  # есть в протоколе, но не отправляется в ФНС
-    1001: Byte(u'autoMode', u'автоматический режим'),
-    1002: Byte(u'offlineMode', u'автономный режим'),
-    1003: String(u'<unknown-1003>', u'адрес банковского агента', maxlen=256),
-    1004: String(u'<unknown-1004>', u'адрес банковского субагента', maxlen=256),
-    1005: [String(u'operatorTransferAddress', u'адрес оператора по переводу', maxlen=256, parents=[3, 4]),
-           String(u'paymentProviderAddress', u'адрес оператора по переводу', maxlen=256, parents=[1223])],
-    1006: String(u'<unknown-1006>', u'адрес платежного агента', maxlen=256),
-    1007: String(u'<unknown-1007>', u'адрес платежного субагента', maxlen=256),
-    1008: String(u'buyerPhoneOrAddress', u'адрес покупателя', maxlen=64),
-    1009: String(u'retailAddress', u'адрес (место) расчетов', maxlen=256),
-    1010: VLN(u'paymentAgentRemuneration', u'Размер вознаграждения банковского агента (субагента)'),
-    1011: VLN(u'paymentAgentRemuneration-del', u'Размер вознаграждения платежного агента (субагента)'),
-    1012: UnixTime(u'dateTime', u'дата, время'),
-    1013: String(u'kktNumber', u'Заводской номер ККТ', maxlen=20),
-    1014: String(u'<unknown-1014>', u'значение типа строка', maxlen=64),
-    1015: U32(u'<unknown-1015>', u'значение типа целое'),
-    1016: [String(u'operatorTransferInn', u'ИНН оператора по переводу денежных средств', maxlen=12, parents=[3, 4],
+    1000: String('docName', 'наименование документа', maxlen=256),  # есть в протоколе, но не отправляется в ФНС
+    1001: Byte('autoMode', 'автоматический режим'),
+    1002: Byte('offlineMode', 'автономный режим'),
+    1003: String('<unknown-1003>', 'адрес банковского агента', maxlen=256),
+    1004: String('<unknown-1004>', 'адрес банковского субагента', maxlen=256),
+    1005: [String('operatorTransferAddress', 'адрес оператора по переводу', maxlen=256, parents=[3, 4]),
+           String('paymentProviderAddress', 'адрес оператора по переводу', maxlen=256, parents=[1223])],
+    1006: String('<unknown-1006>', 'адрес платежного агента', maxlen=256),
+    1007: String('<unknown-1007>', 'адрес платежного субагента', maxlen=256),
+    1008: String('buyerPhoneOrAddress', 'адрес покупателя', maxlen=64),
+    1009: String('retailAddress', 'адрес (место) расчетов', maxlen=256),
+    1010: VLN('paymentAgentRemuneration', 'Размер вознаграждения банковского агента (субагента)'),
+    1011: VLN('paymentAgentRemuneration-del', 'Размер вознаграждения платежного агента (субагента)'),
+    1012: UnixTime('dateTime', 'дата, время'),
+    1013: String('kktNumber', 'Заводской номер ККТ', maxlen=20),
+    1014: String('<unknown-1014>', 'значение типа строка', maxlen=64),
+    1015: U32('<unknown-1015>', 'значение типа целое'),
+    1016: [String('operatorTransferInn', 'ИНН оператора по переводу денежных средств', maxlen=12, parents=[3, 4],
                   strip=True),
-           String(u'paymentProviderInn', u'ИНН оператора перевода', maxlen=12, parents=[1223], strip=True)],
-    1017: String(u'ofdInn', u'ИНН ОФД', maxlen=12, strip=True),
-    1018: String(u'userInn', u'ИНН пользователя', maxlen=12, strip=True),
-    1019: String(u'<unknown-1019>', u'Информационное cообщение', maxlen=64),
-    1020: VLN(u'totalSum', u'ИТОГ', parents=[3, 31, 4, 41]),
-    1021: String(u'operator', u'Кассир', maxlen=64),
-    1022: Byte(u'ofdResponseCode', u'код ответа ОФД'),  # name выбрано самостоятельно
-    1023: FVLN(u'quantity', u'Количество', maxlen=8),
-    1024: String(u'<unknown-1024>', u'Наименование банковского агента', maxlen=64),
-    1025: String(u'<unknown-1025>', u'Наименование банковского субагента', maxlen=64),
-    1026: [String(u'operatorTransferName', u'Наименование оператора по переводу денежных средств', 64, parents=[3, 4]),
-           String(u'paymentProviderName', u'Наименование оператора по переводу денежных средств', 64, parents=[1223])],
-    1027: String(u'<unknown-1027>', u'Наименование платежного агента', maxlen=64),
-    1028: String(u'<unknown-1028>', u'Наименование платежного субагента', maxlen=64),
-    1029: String(u'<unknown-1029>', u'наименование реквизита', maxlen=64),
-    1030: String(u'name', u'Наименование товара', maxlen=128),
-    1031: VLN(u'cashTotalSum', u'Наличными'),
-    1032: STLV(u'<unknown-1032>', u'Налог', maxlen=33),
-    1033: STLV(u'<unknown-1033>', u'Налоги', maxlen=33),
-    1034: FVLN(u'markup', u'Наценка (ставка)', maxlen=8),
-    1035: VLN(u'markupSum', u'Наценка (сумма)'),
-    1036: String(u'machineNumber', u'Номер автомата', maxlen=20),
-    1037: String(u'kktRegId', u'Номер ККТ', maxlen=20),
-    1038: U32(u'shiftNumber', u'Номер смены'),
-    1039: String(u'<unknown-1039>', u'Зарезервирован', maxlen=12),
-    1040: U32(u'fiscalDocumentNumber', u'номер фискального документа'),
-    1041: String(u'fiscalDriveNumber', desc=u'заводской номер фискального накопителя', maxlen=16),
-    1042: U32(u'requestNumber', u'номер чека за смену'),
-    1043: VLN(u'sum', u'Общая стоимость позиции с учетом скидок и наценок'),
-    1044: [String(u'paymentAgentOperation', u'Операция банковского агента', maxlen=24, parents=[3, 4]),
-           String(u'agentOperation', u'Операция банковского агента', maxlen=24, parents=[1223])],
-    1045: String(u'bankSubagentOperation', u'операция банковского субагента', maxlen=24),
-    1046: String(u'ofdName', u'ОФД', maxlen=256),
-    1047: STLV(u'<unknown-1047>', u'параметр настройки', maxlen=144),
-    1048: String(u'user', u'наименование пользователя', maxlen=256),
-    1049: String(u'<unknown-1049>', u'Почтовый индекс', maxlen=6),
-    1050: Byte(u'fiscalDriveExhaustionSign', u'Признак исчерпания ресурса ФН'),
-    1051: Byte(u'fiscalDriveReplaceRequiredSign', u'Признак необходимости срочной замены ФН'),
-    1052: Byte(u'fiscalDriveMemoryExceededSign', u'Признак переполнения памяти ФН'),
-    1053: Byte(u'ofdResponseTimeoutSign', u'Признак превышения времени ожидания ответа ОФД'),
-    1054: Byte(u'operationType', u'Признак расчета'),
-    1055: Byte(u'taxationType', u'применяемая система налогообложения', parents=[3, 31, 4, 41]),
-    1056: Byte(u'encryptionSign', u'Признак шифрования'),
-    1057: Byte(u'paymentAgentType', u'Применение платежными агентами (субагентами)'),
-    1058: Byte(u'<unknown-1058>', u'Применение банковскими агентами (субагентами)'),
-    1059: STLV(u'items', u'наименование товара (реквизиты)', 328, '*'),
-    1060: String(u'fnsSite', u'Сайт налогового органа', maxlen=64),  # our name
-    1061: String(u'ofdSite', u'Сайт ОФД', maxlen=64),  # our name
-    1062: Byte(u'taxationType', u'системы налогообложения', parents=[1, 11]),
-    1063: FVLN(u'discount', u'Скидка (ставка)', 8),
-    1064: VLN(u'discountSum', u'Скидка (сумма)'),
-    1065: String(u'<unknown-1065>', u'Сокращенное наименование налога', maxlen=10),
-    1066: String(u'<unknown-1066>', u'Сообщение', maxlen=256),
-    1067: STLV(u'<unknown-1067>', u'Сообщение оператора для ККТ', maxlen=216),
-    1068: STLV(u'messageToFn', u'сообщение оператора для ФН', maxlen=169),  # name выбрано самостоятельно
-    1069: STLV(u'<unknown-1069>', u'Сообщение оператору', 328, '*'),
-    1070: FVLN(u'<unknown-1070>', u'Ставка налога', maxlen=5),
-    1071: STLV(u'stornoItems', u'сторно товара (реквизиты)', 328, '*'),
-    1072: VLN(u'<unknown-1072>', u'Сумма налога', maxlen=8),
-    1073: String(u'paymentAgentPhone', u'Телефон банковского агента', maxlen=19, cardinality='*'),
-    1074: [String(u'operatorToReceivePhone', u'Телефон платежного агента', maxlen=19, cardinality='*', parents=[3, 4]),
-           String(u'paymentProviderPhone', u'Телефон платежного агента', maxlen=19, cardinality='*', parents=[1223])],
-    1075: [String(u'operatorPhoneToTransfer', u'Телефон оператора по переводу денежных средств', 19, cardinality='*',
+           String('paymentProviderInn', 'ИНН оператора перевода', maxlen=12, parents=[1223], strip=True)],
+    1017: String('ofdInn', 'ИНН ОФД', maxlen=12, strip=True),
+    1018: String('userInn', 'ИНН пользователя', maxlen=12, strip=True),
+    1019: String('<unknown-1019>', 'Информационное cообщение', maxlen=64),
+    1020: VLN('totalSum', 'ИТОГ', parents=[3, 31, 4, 41]),
+    1021: String('operator', 'Кассир', maxlen=64),
+    1022: Byte('ofdResponseCode', 'код ответа ОФД'),  # name выбрано самостоятельно
+    1023: FVLN('quantity', 'Количество', maxlen=8),
+    1024: String('<unknown-1024>', 'Наименование банковского агента', maxlen=64),
+    1025: String('<unknown-1025>', 'Наименование банковского субагента', maxlen=64),
+    1026: [String('operatorTransferName', 'Наименование оператора по переводу денежных средств', 64, parents=[3, 4]),
+           String('paymentProviderName', 'Наименование оператора по переводу денежных средств', 64, parents=[1223])],
+    1027: String('<unknown-1027>', 'Наименование платежного агента', maxlen=64),
+    1028: String('<unknown-1028>', 'Наименование платежного субагента', maxlen=64),
+    1029: String('<unknown-1029>', 'наименование реквизита', maxlen=64),
+    1030: String('name', 'Наименование товара', maxlen=128),
+    1031: VLN('cashTotalSum', 'Наличными'),
+    1032: STLV('<unknown-1032>', 'Налог', maxlen=33),
+    1033: STLV('<unknown-1033>', 'Налоги', maxlen=33),
+    1034: FVLN('markup', 'Наценка (ставка)', maxlen=8),
+    1035: VLN('markupSum', 'Наценка (сумма)'),
+    1036: String('machineNumber', 'Номер автомата', maxlen=20),
+    1037: String('kktRegId', 'Номер ККТ', maxlen=20),
+    1038: U32('shiftNumber', 'Номер смены'),
+    1039: String('<unknown-1039>', 'Зарезервирован', maxlen=12),
+    1040: U32('fiscalDocumentNumber', 'номер фискального документа'),
+    1041: String('fiscalDriveNumber', desc='заводской номер фискального накопителя', maxlen=16),
+    1042: U32('requestNumber', 'номер чека за смену'),
+    1043: VLN('sum', 'Общая стоимость позиции с учетом скидок и наценок'),
+    1044: [String('paymentAgentOperation', 'Операция банковского агента', maxlen=24, parents=[3, 4]),
+           String('agentOperation', 'Операция банковского агента', maxlen=24, parents=[1223])],
+    1045: String('bankSubagentOperation', 'операция банковского субагента', maxlen=24),
+    1046: String('ofdName', 'ОФД', maxlen=256),
+    1047: STLV('<unknown-1047>', 'параметр настройки', maxlen=144),
+    1048: String('user', 'наименование пользователя', maxlen=256),
+    1049: String('<unknown-1049>', 'Почтовый индекс', maxlen=6),
+    1050: Byte('fiscalDriveExhaustionSign', 'Признак исчерпания ресурса ФН'),
+    1051: Byte('fiscalDriveReplaceRequiredSign', 'Признак необходимости срочной замены ФН'),
+    1052: Byte('fiscalDriveMemoryExceededSign', 'Признак переполнения памяти ФН'),
+    1053: Byte('ofdResponseTimeoutSign', 'Признак превышения времени ожидания ответа ОФД'),
+    1054: Byte('operationType', 'Признак расчета'),
+    1055: Byte('taxationType', 'применяемая система налогообложения', parents=[3, 31, 4, 41]),
+    1056: Byte('encryptionSign', 'Признак шифрования'),
+    1057: Byte('paymentAgentType', 'Применение платежными агентами (субагентами)'),
+    1058: Byte('<unknown-1058>', 'Применение банковскими агентами (субагентами)'),
+    1059: STLV('items', 'наименование товара (реквизиты)', 328, '*'),
+    1060: String('fnsSite', 'Сайт налогового органа', maxlen=64),  # our name
+    1061: String('ofdSite', 'Сайт ОФД', maxlen=64),  # our name
+    1062: Byte('taxationType', 'системы налогообложения', parents=[1, 11]),
+    1063: FVLN('discount', 'Скидка (ставка)', 8),
+    1064: VLN('discountSum', 'Скидка (сумма)'),
+    1065: String('<unknown-1065>', 'Сокращенное наименование налога', maxlen=10),
+    1066: String('<unknown-1066>', 'Сообщение', maxlen=256),
+    1067: STLV('<unknown-1067>', 'Сообщение оператора для ККТ', maxlen=216),
+    1068: STLV('messageToFn', 'сообщение оператора для ФН', maxlen=169),  # name выбрано самостоятельно
+    1069: STLV('<unknown-1069>', 'Сообщение оператору', 328, '*'),
+    1070: FVLN('<unknown-1070>', 'Ставка налога', maxlen=5),
+    1071: STLV('stornoItems', 'сторно товара (реквизиты)', 328, '*'),
+    1072: VLN('<unknown-1072>', 'Сумма налога', maxlen=8),
+    1073: String('paymentAgentPhone', 'Телефон банковского агента', maxlen=19, cardinality='*'),
+    1074: [String('operatorToReceivePhone', 'Телефон платежного агента', maxlen=19, cardinality='*', parents=[3, 4]),
+           String('paymentProviderPhone', 'Телефон платежного агента', maxlen=19, cardinality='*', parents=[1223])],
+    1075: [String('operatorPhoneToTransfer', 'Телефон оператора по переводу денежных средств', 19, cardinality='*',
                   parents=[3, 4]),
-           String(u'agentPhone', u'Телефон оператора перевода', 19, cardinality='*', parents=[1223])],
-    1076: String(u'type', u'Тип сообщения', maxlen=64),
-    1077: VLN(u'fiscalSign', u'фискальный признак документа', maxlen=6),
-    1078: ByteArray(u'<unknown-1078>', u'фискальный признак оператора', maxlen=18),
-    1079: VLN(u'price', u'Цена за единицу'),
-    1080: String(u'barcode', u'Штриховой код EAN13', maxlen=16),
-    1081: VLN(u'ecashTotalSum', u'форма расчета – электронными'),
-    1082: String(u'bankSubagentPhone', u'телефон банковского субагента', maxlen=19),
-    1083: String(u'paymentSubagentPhone', u'телефон платежного субагента', maxlen=19),
-    1084: STLV(u'propertiesUser', u'дополнительный реквизит', 328),
-    1085: String(u'propertyName', u'наименование дополнительного реквизита', maxlen=64),
-    1086: String(u'propertyValue', u'значение дополнительного реквизита', maxlen=256),
-    # 1087: u'Итог смены',
+           String('agentPhone', 'Телефон оператора перевода', 19, cardinality='*', parents=[1223])],
+    1076: String('type', 'Тип сообщения', maxlen=64),
+    1077: VLN('fiscalSign', 'фискальный признак документа', maxlen=6),
+    1078: ByteArray('<unknown-1078>', 'фискальный признак оператора', maxlen=18),
+    1079: VLN('price', 'Цена за единицу'),
+    1080: String('barcode', 'Штриховой код EAN13', maxlen=16),
+    1081: VLN('ecashTotalSum', 'форма расчета – электронными'),
+    1082: String('bankSubagentPhone', 'телефон банковского субагента', maxlen=19),
+    1083: String('paymentSubagentPhone', 'телефон платежного субагента', maxlen=19),
+    1084: STLV('propertiesUser', 'дополнительный реквизит', 328),
+    1085: String('propertyName', 'наименование дополнительного реквизита', maxlen=64),
+    1086: String('propertyValue', 'значение дополнительного реквизита', maxlen=256),
+    # 1087: 'Итог смены',
     # 1088:
     # 1089:
     # 1090:
@@ -649,117 +685,118 @@ DOCUMENTS = {
     # 1094:
     # 1095:
     # 1096:
-    1097: U32(u'notTransmittedDocumentsQuantity', u'количество непереданных документов ФД'),
-    1098: UnixTime(u'notTransmittedDocumentsDateTime', u'дата и время первого из непереданных ФД'),
+    1097: U32('notTransmittedDocumentsQuantity', 'количество непереданных документов ФД'),
+    1098: UnixTime('notTransmittedDocumentsDateTime', 'дата и время первого из непереданных ФД'),
     # 1099:
     # 1100:
-    1101: Byte(u'correctionReasonCode', u'код причины перерегистрации', cardinality='+'),
-    1102: VLN(u'nds18', u'НДС итога чека со ставкой 18%'),
-    1103: VLN(u'nds10', u'НДС итога чека со ставкой 10%'),
-    1104: VLN(u'nds0', u'НДС итога чека со ставкой 0%'),
-    1105: VLN(u'ndsNo', u'НДС не облагается'),
-    1106: VLN(u'ndsCalculated18', u'НДС итога чека с рассчитанной ставкой 18%'),
-    1107: VLN(u'ndsCalculated10', u'НДС итога чека с рассчитанной ставкой 10%'),
-    1108: Byte(u'internetSign', u'признак расчетов в сети Интернет'),
-    1109: Byte(u'serviceSign', u'признак работы в сфере услуг'),
-    1110: Byte(u'bsoSign', u'применяется для формирования БСО'),
-    1111: U32(u'documentsQuantity', u'количество фискальных документов за смену'),
-    1112: STLV(u'modifiers', u'скидка/наценка', 160, '*'),
-    1113: String(u'discountName', u'наименование скидки', 64),
-    1114: String(u'markupName', u'наименование наценки', 64),
-    1115: String(u'addressToCheckFiscalSign', u'адрес сайта для проверки ФП', 256),
-    1116: U32(u'notTransmittedDocumentNumber', u'номер первого непереданного документа'),
-    1117: String(u'sellerAddress', u'адрес электронной почты отправителя чека', 64),
-    1118: U32(u'receiptsQuantity', u'количество кассовых чеков за смену'),
-    1119: String(u'operatorPhoneToReceive', u'телефон оператора по приему платежей', 19),
+    1101: Byte('correctionReasonCode', 'код причины перерегистрации', cardinality='+'),
+    1102: VLN('nds18', 'НДС итога чека со ставкой 18%'),
+    1103: VLN('nds10', 'НДС итога чека со ставкой 10%'),
+    1104: VLN('nds0', 'НДС итога чека со ставкой 0%'),
+    1105: VLN('ndsNo', 'НДС не облагается'),
+    1106: VLN('ndsCalculated18', 'НДС итога чека с рассчитанной ставкой 18%'),
+    1107: VLN('ndsCalculated10', 'НДС итога чека с рассчитанной ставкой 10%'),
+    1108: Byte('internetSign', 'признак расчетов в сети Интернет'),
+    1109: Byte('serviceSign', 'признак работы в сфере услуг'),
+    1110: Byte('bsoSign', 'применяется для формирования БСО'),
+    1111: U32('documentsQuantity', 'количество фискальных документов за смену'),
+    1112: STLV('modifiers', 'скидка/наценка', 160, '*'),
+    1113: String('discountName', 'наименование скидки', 64),
+    1114: String('markupName', 'наименование наценки', 64),
+    1115: String('addressToCheckFiscalSign', 'адрес сайта для проверки ФП', 256),
+    1116: U32('notTransmittedDocumentNumber', 'номер первого непереданного документа'),
+    1117: String('sellerAddress', 'адрес электронной почты отправителя чека', 64),
+    1118: U32('receiptsQuantity', 'количество кассовых чеков за смену'),
+    1119: String('operatorPhoneToReceive', 'телефон оператора по приему платежей', 19),
     # 1120:
     # 1121:
     # 1122:
     # 1123:
     # 1124:
     # 1125:
-    1126: Byte(u'lotterySign', u'признак проведения лотереи'),
-    1129: STLV(u'sellOper', u'счетчики операций "приход"', 116),
-    1130: STLV(u'sellReturnOper', u'счетчики операций "возврат прихода"', 116),
-    1131: STLV(u'buyOper', u'счетчики операций "расход"', 116),
-    1132: STLV(u'buyReturnOper', u'счетчики операций "возврат расхода"', 116),
-    1133: STLV(u'receiptCorrection', u'счетчики операций по чекам коррекции', 216),
-    1134: U32(u'receiptCount', u'количество чеков со всеми признаками расчетов', parents=[1157, 1194, 1158]),
-    1135: U32(u'receiptCount', u'количество чеков по признаку расчетов', parents=[1129, 1130, 1131, 1132]),
-    1136: VLN(u'cashSum', u'сумма расчетов наличными'),
-    1138: VLN(u'ecashSum', u'сумма расчетов электронными'),
-    1139: VLN(u'tax18Sum', u'сумма НДС по ставке 18%'),
-    1140: VLN(u'tax10Sum', u'сумма НДС по ставке 10%'),
-    1141: VLN(u'tax18118Sum', u'сумма НДС по расч. ставке 18/118'),
-    1142: VLN(u'tax10110Sum', u'сумма НДС по расч. ставке 10/110'),
-    1143: VLN(u'tax0Sum', u'сумма расчетов с НДС по ставке 0%'),
-    1144: U32(u'receiptCorrectionCount', u'количество чеков коррекции'),
-    1145: STLV(u'sellCorrection', u'счетчики коррекций "приход"', 100),
-    1146: STLV(u'buyCorrection', u'счетчики коррекций "расход"', 100),
-    1147: U32(u'1147', u'количество операций коррекции'),
-    1148: U32(u'selfCorrectionCount', u'количество самостоятельных корректировок'),
-    1149: U32(u'orderCorrectionCount', u'количество корректировок по предписанию'),
-    1150: VLN(u'correctionSum', u'сумма коррекций'),
-    1151: VLN(u'tax18CorrectionSum', u'сумма коррекций НДС по ставке 18%'),
-    1152: VLN(u'tax10CorrectionSum', u'сумма коррекций НДС по ставке 10%'),
-    1153: VLN(u'tax18118CorrectionSum', u'сумма коррекций НДС по расч. ставке 18/118'),
-    1154: VLN(u'tax10110CorrectionSum', u'сумма коррекций НДС расч. ставке 10/110'),
-    1155: VLN(u'tax08CorrectionSum', u'сумма коррекций с НДС по ставке 0%'),
-    1157: STLV(u'fiscalDriveSumReports', u'счетчики итогов ФН', 708),
-    1158: STLV(u'notTransmittedDocumentsSumReports', u'счетчики итогов непереданных ФД', 708),
-    1162: ByteArray(u'productCode', u'код товарной номенклатуры', 32),
-    1171: String(u'providerPhone', u'телефон поставщика', 19),
-    1173: Byte(u'correctionType', u'тип коррекции'),
-    1174: STLV(u'correctionBase', u'основание для коррекции', 292),
-    1177: String(u'correctionName', u'наименование основания для коррекции', 256),
-    1178: UnixTime(u'correctionDocumentDate', u'дата документа основания для коррекции'),
-    1179: String(u'correctionDocumentNumber', u'номер документа основания для коррекции', 32),
-    1183: VLN(u'taxFreeSum', u'сумма расчетов без НДС'),
-    1184: VLN(u'taxFreeCorrectionSum', u'сумма коррекций без НДС'),
-    1187: String(u'retailPlace', u'место расчетов', 256),
-    1188: String(u'kktVersion', u'версия ККТ', 8),
-    1189: Byte(u'documentKktVersion', u'версия ФФД ККТ'),
-    1190: Byte(u'documentFdVersion', u'версия ФФД ФН'),
-    1191: [String(u'propertiesString', u'дополнительный реквизит предмета расчета', 256, parents=[3, 4]),
-           String(u'propertiesItem', u'дополнительный реквизит предмета расчета', 256, parents=[1059, 1071])],
-    1192: String(u'propertiesData', u'дополнительный реквизит чека (БСО)', 16),
-    1193: Byte(u'gamblingSign', u'признак проведения азартных игр'),
-    1194: STLV(u'shiftSumReports', u'счетчики итогов смены', 704),
-    1195: String(u'sellerAddress-del', u'адрес электронной почты отправителя чека', 64),
-    1196: String(u'1196', u'QR-код', 10000),
-    1197: String(u'unit', u'единица измерения предмета расчета', 16),
-    1198: VLN(u'unitNds', u'размер НДС за единицу предмета расчета'),
-    1199: Byte(u'nds', u'ставка НДС'),
-    1200: VLN(u'ndsSum', u'сумма НДС за предмет расчета'),
-    1201: VLN(u'totalSum', u'общая сумма расчетов', parents=[1129, 1130, 1131, 1132]),
-    1203: String(u'operatorInn', u'ИНН кассира', 12, parents=[1, 11, 2, 3, 4, 31, 41, 5, 6], strip=True),
-    1205: U32(u'correctionKktReasonCode', u'коды причин изменения сведений о ККТ', cardinality='+'),
-    1206: Byte(u'operatorMessage', u'сообщение оператора'),
-    1207: Byte(u'exciseDutyProductSign', u'продажа подакцизного товара'),
-    1208: String(u'1208', u'сайт чеков', 256),
-    1209: Byte(u'fiscalDocumentFormatVer', u'версия ФФД'),
-    1210: Byte(u'1210', u'признаки режимов работы ККТ'),
-    1212: Byte(u'productType', u'признак предмета расчета'),
-    1213: U32(u'fdKeyResource', u'ресурс ключей ФП'),
-    1214: Byte(u'paymentType', u'признак способа расчета'),
-    1215: VLN(u'prepaidSum', u'сумма предоплаты (зачет аванса)', parents=[3, 31, 41, 41]),
-    1216: VLN(u'creditSum', u'сумма постоплаты (кредита)', parents=[3, 31, 4, 41]),
-    1217: VLN(u'provisionSum', u'сумма встречным предоставлением', parents=[3, 31, 4, 41]),
-    1218: VLN(u'prepaidSum', u'итоговая сумма в чеках (БСО) предоплатами', maxlen=6,
+    1126: Byte('lotterySign', 'признак проведения лотереи'),
+    1129: STLV('sellOper', 'счетчики операций "приход"', 116),
+    1130: STLV('sellReturnOper', 'счетчики операций "возврат прихода"', 116),
+    1131: STLV('buyOper', 'счетчики операций "расход"', 116),
+    1132: STLV('buyReturnOper', 'счетчики операций "возврат расхода"', 116),
+    1133: STLV('receiptCorrection', 'счетчики операций по чекам коррекции', 216),
+    1134: U32('receiptCount', 'количество чеков со всеми признаками расчетов', parents=[1157, 1194, 1158]),
+    1135: U32('receiptCount', 'количество чеков по признаку расчетов', parents=[1129, 1130, 1131, 1132]),
+    1136: VLN('cashSum', 'сумма расчетов наличными'),
+    1138: VLN('ecashSum', 'сумма расчетов электронными'),
+    1139: VLN('tax18Sum', 'сумма НДС по ставке 18%'),
+    1140: VLN('tax10Sum', 'сумма НДС по ставке 10%'),
+    1141: VLN('tax18118Sum', 'сумма НДС по расч. ставке 18/118'),
+    1142: VLN('tax10110Sum', 'сумма НДС по расч. ставке 10/110'),
+    1143: VLN('tax0Sum', 'сумма расчетов с НДС по ставке 0%'),
+    1144: U32('receiptCorrectionCount', 'количество чеков коррекции'),
+    1145: STLV('sellCorrection', 'счетчики коррекций "приход"', 100),
+    1146: STLV('buyCorrection', 'счетчики коррекций "расход"', 100),
+    1147: U32('1147', 'количество операций коррекции'),
+    1148: U32('selfCorrectionCount', 'количество самостоятельных корректировок'),
+    1149: U32('orderCorrectionCount', 'количество корректировок по предписанию'),
+    1150: VLN('correctionSum', 'сумма коррекций'),
+    1151: VLN('tax18CorrectionSum', 'сумма коррекций НДС по ставке 18%'),
+    1152: VLN('tax10CorrectionSum', 'сумма коррекций НДС по ставке 10%'),
+    1153: VLN('tax18118CorrectionSum', 'сумма коррекций НДС по расч. ставке 18/118'),
+    1154: VLN('tax10110CorrectionSum', 'сумма коррекций НДС расч. ставке 10/110'),
+    1155: VLN('tax08CorrectionSum', 'сумма коррекций с НДС по ставке 0%'),
+    1157: STLV('fiscalDriveSumReports', 'счетчики итогов ФН', 708),
+    1158: STLV('notTransmittedDocumentsSumReports', 'счетчики итогов непереданных ФД', 708),
+    1162: ByteArray('productCode', 'код товарной номенклатуры', 32),
+    1171: String('providerPhone', 'телефон поставщика', 19),
+    1173: Byte('correctionType', 'тип коррекции'),
+    1174: STLV('correctionBase', 'основание для коррекции', 292),
+    1177: String('correctionName', 'наименование основания для коррекции', 256),
+    1178: UnixTime('correctionDocumentDate', 'дата документа основания для коррекции'),
+    1179: String('correctionDocumentNumber', 'номер документа основания для коррекции', 32),
+    1183: VLN('taxFreeSum', 'сумма расчетов без НДС'),
+    1184: VLN('taxFreeCorrectionSum', 'сумма коррекций без НДС'),
+    1187: String('retailPlace', 'место расчетов', 256),
+    1188: String('kktVersion', 'версия ККТ', 8),
+    1189: Byte('documentKktVersion', 'версия ФФД ККТ'),
+    1190: Byte('documentFdVersion', 'версия ФФД ФН'),
+    1191: [String('propertiesString', 'дополнительный реквизит предмета расчета', 256, parents=[3, 4]),
+           String('propertiesItem', 'дополнительный реквизит предмета расчета', 256, parents=[1059, 1071])],
+    1192: String('propertiesData', 'дополнительный реквизит чека (БСО)', 16),
+    1193: Byte('gamblingSign', 'признак проведения азартных игр'),
+    1194: STLV('shiftSumReports', 'счетчики итогов смены', 704),
+    1195: String('sellerAddress-del', 'адрес электронной почты отправителя чека', 64),
+    1196: String('1196', 'QR-код', 10000),
+    1197: String('unit', 'единица измерения предмета расчета', 16),
+    1198: VLN('unitNds', 'размер НДС за единицу предмета расчета'),
+    1199: Byte('nds', 'ставка НДС'),
+    1200: VLN('ndsSum', 'сумма НДС за предмет расчета'),
+    1201: VLN('totalSum', 'общая сумма расчетов', parents=[1129, 1130, 1131, 1132]),
+    1203: String('operatorInn', 'ИНН кассира', 12, parents=[1, 11, 2, 3, 4, 31, 41, 5, 6], strip=True),
+    1205: U32('correctionKktReasonCode', 'коды причин изменения сведений о ККТ', cardinality='+'),
+    1206: Byte('operatorMessage', 'сообщение оператора'),
+    1207: Byte('exciseDutyProductSign', 'продажа подакцизного товара'),
+    1208: String('1208', 'сайт чеков', 256),
+    1209: Byte('fiscalDocumentFormatVer', 'версия ФФД'),
+    1210: Byte('1210', 'признаки режимов работы ККТ'),
+    1212: Byte('productType', 'признак предмета расчета'),
+    1213: U32('fdKeyResource', 'ресурс ключей ФП'),
+    1214: Byte('paymentType', 'признак способа расчета'),
+    1215: VLN('prepaidSum', 'сумма предоплаты (зачет аванса)', parents=[3, 31, 41, 41]),
+    1216: VLN('creditSum', 'сумма постоплаты (кредита)', parents=[3, 31, 4, 41]),
+    1217: VLN('provisionSum', 'сумма встречным предоставлением', parents=[3, 31, 4, 41]),
+    1218: VLN('prepaidSum', 'итоговая сумма в чеках (БСО) предоплатами', maxlen=6,
               parents=[1129, 1130, 1131, 1132, 1145, 1146]),
-    1219: VLN(u'creditSum', u'итоговая сумма в чеках (БСО) постоплатами', maxlen=6,
+    1219: VLN('creditSum', 'итоговая сумма в чеках (БСО) постоплатами', maxlen=6,
               parents=[1129, 1130, 1131, 1132, 1145, 1146]),
 
-    1220: VLN(u'provisionSum', u'итоговая сумма в чеках (БСО) встречными предоставлениями', maxlen=6),
-    1221: Byte(u'printInMachineSign', u'признак установки принтера в автомате'),
-    1222: Byte(u'paymentAgentByProductType', u'признак агента по предмету расчета'),
-    1223: STLV(u'paymentAgentData', u'данные агента', maxlen=512),
-    1224: STLV(u'providerData', u'данные поставщика', maxlen=512),
-    1225: String(u'providerName', u'наименование поставщика', maxlen=256),
-    1226: String(u'providerInn', u'ИНН поставщика', maxlen=12)
+    1220: VLN('provisionSum', 'итоговая сумма в чеках (БСО) встречными предоставлениями', maxlen=6),
+    1221: Byte('printInMachineSign', 'признак установки принтера в автомате'),
+    1222: Byte('paymentAgentByProductType', 'признак агента по предмету расчета'),
+    1223: STLV('paymentAgentData', 'данные агента', maxlen=512),
+    1224: STLV('providerData', 'данные поставщика', maxlen=512),
+    1225: String('providerName', 'наименование поставщика', maxlen=256),
+    1226: String('providerInn', 'ИНН поставщика', maxlen=12),
 }
+# yapf: enable
 
-VERSIONS = {1: '1.0', 2: '1.05', 3: '1.1'}
+VERSIONS = {1: '1.0', 2: '1.05', 3: '1.1', 4: '1.2'}
 
 
 def _group_tags(docs, group_by):
@@ -810,12 +847,19 @@ _update_tag_value(DOCUMENTS)  # инициализация тегов
 
 
 class NullValidator(object):
+
     def validate(self, doc: dict, version: str):
         pass
 
 
 class DocumentValidator(object):
-    def __init__(self, versions, path, skip_unknown=False, min_date='2016.09.01', future_hours=24):
+
+    def __init__(self,
+                 versions,
+                 path,
+                 skip_unknown=False,
+                 min_date='2016.09.01',
+                 future_hours=24):
         """
         Класс для валидации документов от ККТ по json-схеме.
         :param versions: поддерживаемые версии протокола, например ['1.0', '1.05'].
@@ -828,16 +872,19 @@ class DocumentValidator(object):
         schema_dir = os.path.expanduser(path)
         schema_dir = os.path.abspath(schema_dir)
 
-        self.min_date = datetime.datetime.strptime(min_date, '%Y.%m.%d') if min_date else None
+        self.min_date = datetime.datetime.strptime(
+            min_date, '%Y.%m.%d') if min_date else None
         self.future_hours = future_hours
 
         for version in versions:
-            full_path = os.path.join(schema_dir, version, 'document.schema.json')
+            full_path = os.path.join(schema_dir, version,
+                                     'document.schema.json')
             with open(full_path, encoding='utf-8') as fh:
                 schema = json.loads(fh.read())
                 resolver = jsonschema.RefResolver('file://' + full_path, None)
                 validator = Draft4Validator(schema=schema, resolver=resolver)
-                validator.check_schema(schema)  # проверяем, что сама схема - валидная
+                validator.check_schema(
+                    schema)  # проверяем, что сама схема - валидная
                 self._validators[version] = validator
 
     def validate(self, doc: dict, version: str):
@@ -861,16 +908,19 @@ class DocumentValidator(object):
         doc_timestamp = doc[doc_name].get('dateTime')
         if self.min_date and self.min_date.timestamp() > doc_timestamp:
             doc_date = datetime.datetime.fromtimestamp(doc_timestamp)
-            raise ValidationError('Document timestamp ' + str(doc_date) + ' is less than min. allowed date ' +
+            raise ValidationError('Document timestamp ' + str(doc_date) +
+                                  ' is less than min. allowed date ' +
                                   str(self.min_date))
 
         # проверка, что чек может быть "из будущего" только на 24 часа больше UTC
-        future = datetime.datetime.utcnow() + datetime.timedelta(hours=self.future_hours)
+        future = datetime.datetime.utcnow() + datetime.timedelta(
+            hours=self.future_hours)
         if doc_timestamp > future.timestamp():
             doc_date = datetime.datetime.fromtimestamp(doc_timestamp)
 
-            raise ValidationError('Document timestamp {} is greater than now for {} hours'
-                                  .format(str(doc_date), str(self.future_hours)))
+            raise ValidationError(
+                'Document timestamp {} is greater than now for {} hours'.
+                format(str(doc_date), str(self.future_hours)))
 
 
 def _select_tag_by_key(key, docs, parent_ty):
@@ -884,7 +934,8 @@ def _select_tag_by_key(key, docs, parent_ty):
         return val
 
     if not isinstance(val, list):
-        raise ProtocolError('Value by key {} must be list or tuple: {}'.format(key, val))
+        raise ProtocolError('Value by key {} must be list or tuple: {}'.format(
+            key, val))
 
     for el in val:
         parents = el[1].parents
@@ -894,7 +945,8 @@ def _select_tag_by_key(key, docs, parent_ty):
             return el
 
     # если соответствие не найдено, то кидаем ошибку - это лучшем, чем неправильно зашифровать ответ
-    raise ProtocolError('Cant find correct tags for {} with parent {}'.format(key, parent_ty))
+    raise ProtocolError('Cant find correct tags for {} with parent {}'.format(
+        key, parent_ty))
 
 
 def pack_json(doc: dict, docs: dict = DOCS_BY_DESC, parent_ty=None) -> bytes:
@@ -931,7 +983,7 @@ def pack_json(doc: dict, docs: dict = DOCS_BY_DESC, parent_ty=None) -> bytes:
     return wr
 
 
-MAX_UINT_32 = 2 ** 32 - 1  # максимальное значение 4-байтового uint
+MAX_UINT_32 = 2**32 - 1  # максимальное значение 4-байтового uint
 
 
 def extract_fiscal_sign_for_print(full_sign):
@@ -948,6 +1000,7 @@ def extract_fiscal_sign_for_print(full_sign):
 
 
 class ProtocolPacker:
+
     @classmethod
     def unpack_container_message(cls, container_message_raw, fiscal_sign):
         ty, length = struct.unpack('<HH', container_message_raw[:4])
@@ -955,8 +1008,10 @@ class ProtocolPacker:
 
         fps = VLN('fiscalSignOperator', 'фпс для оператора')
 
-        container_message = stlv_doc.unpack(container_message_raw[4:4 + length])
-        container_message['rawData'] = base64.b64encode(container_message_raw + fiscal_sign).decode('utf8')
+        container_message = stlv_doc.unpack(container_message_raw[4:4 +
+                                                                  length])
+        container_message['rawData'] = base64.b64encode(
+            container_message_raw + fiscal_sign).decode('utf8')
         container_message['code'] = ty
         container_message['messageFiscalSign'] = fps.unpack(fiscal_sign)
 
@@ -975,26 +1030,36 @@ class ProtocolPacker:
     @classmethod
     def format_message_fields(cls, container_message):
         if 'fiscalSign' in container_message:
-            container_message['fiscalSign'] = extract_fiscal_sign_for_print(container_message['fiscalSign'])
+            container_message['fiscalSign'] = extract_fiscal_sign_for_print(
+                container_message['fiscalSign'])
 
         kkt_reg_id = container_message.get('kktRegId')
         if kkt_reg_id:
             container_message['kktRegId'] = kkt_reg_id.strip()
 
-        inn_fields = ['userInn', 'ofdInn', 'operatorInn', 'operatorTransportInn']
+        inn_fields = [
+            'userInn', 'ofdInn', 'operatorInn', 'operatorTransportInn'
+        ]
         for field in inn_fields:
             if field in container_message:
-                container_message[field] = cls._format_inn(container_message[field])
+                container_message[field] = cls._format_inn(
+                    container_message[field])
 
-        phone_fields = ['paymentAgentPhone', 'operatorToReceivePhone', 'operatorPhoneToTransfer',
-                        'bankSubagentPhone', 'paymentSubagentPhone']
+        phone_fields = [
+            'paymentAgentPhone', 'operatorToReceivePhone',
+            'operatorPhoneToTransfer', 'bankSubagentPhone',
+            'paymentSubagentPhone'
+        ]
 
         for field in phone_fields:
             if field in container_message:
                 if isinstance(container_message[field], list):
-                    container_message[field] = [cls._format_phone(i) for i in container_message[field]]
+                    container_message[field] = [
+                        cls._format_phone(i) for i in container_message[field]
+                    ]
                 else:
-                    container_message[field] = cls._format_phone(container_message[field])
+                    container_message[field] = cls._format_phone(
+                        container_message[field])
 
         return container_message
 
@@ -1024,7 +1089,8 @@ class ProtocolPacker:
 
 
 def unpack_container_message(container_message_raw, fiscal_sign):
-    return ProtocolPacker.unpack_container_message(container_message_raw, fiscal_sign)
+    return ProtocolPacker.unpack_container_message(container_message_raw,
+                                                   fiscal_sign)
 
 
 def unpack_container_from_base64(container_message_b64, fiscal_sign):
