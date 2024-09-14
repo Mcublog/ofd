@@ -1,3 +1,5 @@
+#!/bin/env python3
+
 # coding: utf8
 #
 #        Copyright (C) 2017 Yandex LLC
@@ -32,7 +34,9 @@ async def unpack_incoming_message(rd):
     session = SessionHeader.unpack_from(session_raw)
     print(session)
     container_raw = await rd.readexactly(session.length)
-    header_raw, message_raw = container_raw[:FrameHeader.STRUCT.size], container_raw[FrameHeader.STRUCT.size:]
+    header_raw, message_raw = container_raw[:FrameHeader.STRUCT.
+                                            size], container_raw[FrameHeader.
+                                                                 STRUCT.size:]
     header = FrameHeader.unpack_from(header_raw)
     print(header)
     return unpack_container_message(message_raw, b'0')[0], session, header
@@ -53,7 +57,9 @@ def create_response(doc, in_session, in_header):
             'fiscalDriveNumber': doc_body.get('fiscalDriveNumber'),
             'fiscalDocumentNumber': doc_body.get('fiscalDocumentNumber'),
             'dateTime': int(time.time()),
-            'messageToFn': {'ofdResponseCode': 0}  # код ответа 0 при успешном получении документа
+            'messageToFn': {
+                'ofdResponseCode': 0
+            }  # код ответа 0 при успешном получении документа
             # Теги ФПО и ФПП не указаны, т.к. должны быть добавлены реальным шифровальным комплексом
         }
     }
@@ -64,14 +70,18 @@ def create_response(doc, in_session, in_header):
                              crc=0,
                              doctype=DocCodes.OPERATOR_ACK,
                              devnum=in_header.devnum,
-                             docnum=String.pack(str(doc_body.get('fiscalDocumentNumber'))),
+                             docnum=String.pack(
+                                 str(doc_body.get('fiscalDocumentNumber'))),
                              extra1=in_header.extra1,
                              extra2=String.pack('0'.rjust(12)))
 
     out_header.recalculate_crc(message_raw)
     container_raw = out_header.pack() + message_raw
 
-    out_session = SessionHeader(pva=in_session.pva, fs_id=in_session.fs_id, length=len(container_raw), crc=0,
+    out_session = SessionHeader(pva=in_session.pva,
+                                fs_id=in_session.fs_id,
+                                length=len(container_raw),
+                                crc=0,
                                 flags=0b0000000000010100)
 
     return out_session.pack() + container_raw
@@ -99,8 +109,13 @@ async def handle_connection(rd, wr):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--host', default=None, help='хост для запуска сервера')
-    parser.add_argument('--port', default=12345, type=int, help='порт для запуска сервера')
+    parser.add_argument('--host',
+                        default=None,
+                        help='хост для запуска сервера')
+    parser.add_argument('--port',
+                        default=12345,
+                        type=int,
+                        help='порт для запуска сервера')
     argv = parser.parse_args()
     host = None if argv.host in ['::', 'localhost'] else argv.host
 

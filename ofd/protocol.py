@@ -364,7 +364,7 @@ class SessionHeader(object):
         struct.unpack('<H', bytearray.fromhex('0100'))[0],
         struct.unpack('<H', bytearray.fromhex('0105'))[0],
         struct.unpack('<H', bytearray.fromhex('0110'))[0],
-        struct.unpack('<H', bytearray.fromhex('0110'))[0]
+        struct.unpack('<H', bytearray.fromhex('0120'))[0]
     }
     STRUCT = struct.Struct('<IHH16sHHH')
     MAX_LEN = 32 * 1024  # максимальная длина контейнера - 32кб
@@ -776,7 +776,7 @@ DOCUMENTS = {
     1209: Byte('fiscalDocumentFormatVer', 'версия ФФД'),
     1210: Byte('1210', 'признаки режимов работы ККТ'),
     1212: Byte('productType', 'признак предмета расчета'),
-    1213: U32('fdKeyResource', 'ресурс ключей ФП'),
+    1213: U16('fdKeyResource', 'ресурс ключей ФП'),
     1214: Byte('paymentType', 'признак способа расчета'),
     1215: VLN('prepaidSum', 'сумма предоплаты (зачет аванса)', parents=[3, 31, 41, 41]),
     1216: VLN('creditSum', 'сумма постоплаты (кредита)', parents=[3, 31, 4, 41]),
@@ -793,6 +793,7 @@ DOCUMENTS = {
     1224: STLV('providerData', 'данные поставщика', maxlen=512),
     1225: String('providerName', 'наименование поставщика', maxlen=256),
     1226: String('providerInn', 'ИНН поставщика', maxlen=12),
+    1290: U32(u'applicationKKT', u'признаки условий применения ККТ')
 }
 # yapf: enable
 
