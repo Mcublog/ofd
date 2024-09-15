@@ -793,7 +793,7 @@ DOCUMENTS = {
     1224: STLV('providerData', 'данные поставщика', maxlen=512),
     1225: String('providerName', 'наименование поставщика', maxlen=256),
     1226: String('providerInn', 'ИНН поставщика', maxlen=12),
-    1290: U32(u'applicationKKT', u'признаки условий применения ККТ')
+    1290: U32('applicationKKT', 'признаки условий применения ККТ')
 }
 # yapf: enable
 

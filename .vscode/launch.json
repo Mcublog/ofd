@@ -6,14 +6,17 @@
     "configurations": [
         {
             "name": "Python: Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "example/mock_ofd.py",
             "console": "integratedTerminal",
             "args": [
                 "--port",
-                "12345"
+                "7778"
             ],
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            },
             "justMyCode": false
         }
     ]

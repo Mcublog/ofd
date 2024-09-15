@@ -119,7 +119,7 @@ if __name__ == '__main__':
     argv = parser.parse_args()
     host = None if argv.host in ['::', 'localhost'] else argv.host
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
     server = asyncio.start_server(handle_connection, host=host, port=argv.port)
     loop.run_until_complete(server)
     print('mock ofd server has been started at port', argv.port)
