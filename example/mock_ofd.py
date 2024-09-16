@@ -59,8 +59,9 @@ def create_response(doc, in_session, in_header):
             'dateTime': int(time.time()),
             'messageToFn': {
                 'ofdResponseCode': 0
-            }  # код ответа 0 при успешном получении документа
+            },  # код ответа 0 при успешном получении документа
             # Теги ФПО и ФПП не указаны, т.к. должны быть добавлены реальным шифровальным комплексом
+            '<unknown-1078>': b'\x88\x06\x81\x96\xdc<\x00\x03'
         }
     }
     message_raw = pack_json(message, docs=DOCS_BY_NAME)
@@ -73,7 +74,7 @@ def create_response(doc, in_session, in_header):
                              docnum=String.pack(
                                  str(doc_body.get('fiscalDocumentNumber'))),
                              extra1=in_header.extra1,
-                             extra2=String.pack('0'.rjust(12)))
+                             extra2=String.pack('0'.rjust(12, "0")))
 
     out_header.recalculate_crc(message_raw)
     container_raw = out_header.pack() + message_raw
@@ -100,7 +101,7 @@ async def handle_connection(rd, wr):
         doc, session, header = await unpack_incoming_message(rd)
         print(json.dumps(doc, ensure_ascii=False, indent=4))
         response = create_response(doc, in_session=session, in_header=header)
-        print('raw response', response)
+        print(f'raw response[{len(response)}]', response)
         wr.write(response)
     finally:
         wr.write_eof()

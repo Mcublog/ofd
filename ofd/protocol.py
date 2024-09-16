@@ -459,6 +459,9 @@ class FrameHeader(object):
         self.extra2 = extra2
 
     def pack(self):
+        # print((self.length, self.crc, self.MSGTYPE,
+        #                         self.doctype, self.version, self.extra1,
+        #                         self.devnum, self._docnum, self.extra2))
         return self.STRUCT.pack(self.length, self.crc, self.MSGTYPE,
                                 self.doctype, self.version, self.extra1,
                                 self.devnum, self._docnum, self.extra2)
@@ -518,7 +521,9 @@ class FrameHeader(object):
         return FrameHeader(0, 0, pack[1], *pack[3:])
 
     def docnum(self):
-        return struct.unpack('>I', b'\0' + self._docnum)[0]
+        if isinstance(number := self._docnum, int):
+            number = int(self._docnum).to_bytes(3, 'big')
+        return struct.unpack('>I', b'\0' + number)[0]
 
     def recalculate_crc(self, body):
         f = crcmod.predefined.mkPredefinedCrcFun('crc-ccitt-false')
@@ -537,7 +542,7 @@ class FrameHeader(object):
                '{:26}: {}\n' \
                '{:26}: {}'.format(
                                 'Длина', self.length,
-                                'Проверочный код', self.crc,
+                                'Проверочный код', f"0x{self.crc:04x}",
                                 'Тип сообщения протокола', self.MSGTYPE,
                                 'Тип фискального документа', self.doctype,
                                 'Версия протокола', self.version,
